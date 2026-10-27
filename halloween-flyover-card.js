@@ -1,6 +1,14 @@
 /*
  * Halloween Flyover Card for Home Assistant
  * ------------------------------------------
+ * Version 1.9.0:
+ * - NEU: Schleim- & Spinnennetz-Vorhang am oberen Bildschirmrand (slime_web, slime, web, none)
+ * - NEU: Cameo "Geister-Portal / Schwarzes Loch" (rotierender Strudel saugt Geister ein)
+ * - NEU: Umschaltbarer Kerzenschein-Modus (Kürbis-Orange Flackern vs. Giftgrün)
+ * - NEU: Fliegender Mumien-Sarkophag mit Bandagen-Wurf beim Antippen
+ * - NEU: Gargoyle im Sturzflug mit schwerem Flügelschlag und Knurren
+ * - NEU: Fliegende Kessel-Hexe mit dichtem lila Giftrauch
+ * - Nahtlose Integration in Editor, Audio-Synthese & Test-Buttons
  * Version 1.8.0:
  * - NEU: Fliegender "Kopfloser Reiter" (Headless Horseman) auf Geisterpferd mit brennendem Kürbiskopf & Wiehern
  * - NEU: Herbstlicher Laubfall (🍂, 🍁 taumeln sanft über den Dashboard-Hintergrund)
@@ -13,7 +21,7 @@
  * - Sensenmann, Krähen-Schwarm, Mini-Spinnen, Rüttel-Effekt, Kiosk-Standby-Schutz
  */
 
-const CARD_VERSION = "1.8.0";
+const CARD_VERSION = "1.9.0";
 const STORAGE_KEY = "halloween-flyover-card-v1";
 
 const DEFAULT_CONFIG = {
@@ -29,8 +37,10 @@ const DEFAULT_CONFIG = {
   kiosk_safe: true,
   shake_fx: true,
   // Dashboard-Deko & Atmosphäre
+  curtain_type: "slime_web", // "slime_web" | "slime" | "web" | "none"
   corner_webs: true,
   card_glow: true,
+  glow_mode: "candle", // "candle" (Kürbis-Orange) | "toxic" (Giftgrün)
   flicker_glow: true,
   leaves_fall: true,
   crawling_spiders: true,
@@ -44,6 +54,12 @@ const DEFAULT_CONFIG = {
   crows_every: 7,
   enable_horseman: true,
   horseman_every: 6,
+  enable_mummy: true,
+  mummy_every: 8,
+  enable_gargoyle: true,
+  gargoyle_every: 9,
+  enable_cauldron_witch: true,
+  cauldron_witch_every: 6,
   // Spezialflüge
   enable_specials: true,
   special_every: 10,
@@ -60,6 +76,7 @@ const DEFAULT_CONFIG = {
   cameo_crack: true,
   cameo_fogged_glass: true,
   cameo_eye: true,
+  cameo_portal: true,
   cameo_min: 4,
   cameo_max: 12,
 };
@@ -84,6 +101,10 @@ const I18N = {
     test_reaper: "Test Sensenmann",
     test_crows: "Test Krähen",
     test_horseman: "Test Reiter",
+    test_mummy: "Test Mumie",
+    test_gargoyle: "Test Gargoyle",
+    test_cwitch: "Test Kesselhexe",
+    test_portal: "Test Portal",
     test_special: "Test Spezial",
     test_cameo: "Test Cameo",
     from: "Von",
@@ -123,8 +144,10 @@ const I18N = {
     ed_end: "Tägliche Flugzeit bis",
     ed_countdown: "Countdown bis Halloween anzeigen (klickbar!)",
     ed_default_collapsed: "Karte standardmäßig eingeklappt starten",
+    ed_curtain_type: "Schleim- & Spinnennetz-Vorhang am oberen Rand",
     ed_corner_webs: "Spinnennetze in den Dashboard-Ecken",
-    ed_card_glow: "Giftgrüner Spuk-Glow für Dashboard-Karten",
+    ed_card_glow: "Spuk-Glow für Dashboard-Karten",
+    ed_glow_mode: "Glow-Modus: Kerzenschein (Kürbis-Orange) vs. Toxic (Giftgrün)",
     ed_flicker_glow: "Unheimliches Lampen-Flackern des Glows",
     ed_leaves_fall: "Herbstlicher Laubfall (wehende Blätter)",
     ed_crawling_spiders: "Kriechende Mini-Spinnen auf dem Dashboard",
@@ -138,6 +161,12 @@ const I18N = {
     ed_crows_every: "Krähen: jeder N-te Flug (0 = nie)",
     ed_enable_horseman: "Kopfloser Reiter auf Geisterpferd erlauben",
     ed_horseman_every: "Kopfloser Reiter: jeder N-te Flug (0 = nie)",
+    ed_enable_mummy: "Mumien-Sarkophag mit Bandagen-Wurf erlauben",
+    ed_mummy_every: "Mumie: jeder N-te Flug (0 = nie)",
+    ed_enable_gargoyle: "Gargoyle im Sturzflug erlauben",
+    ed_gargoyle_every: "Gargoyle: jeder N-te Flug (0 = nie)",
+    ed_enable_cauldron_witch: "Fliegende Kessel-Hexe mit Giftrauch erlauben",
+    ed_cauldron_witch_every: "Kessel-Hexe: jeder N-te Flug (0 = nie)",
     ed_enable_specials: "Spezialflüge erlauben",
     ed_special: "Spezialflug: jeder N-te Flug (0 = nie)",
     ed_sp_storm: "Spezial: Gewitter mit Blitzen & Donner",
@@ -152,6 +181,7 @@ const I18N = {
     ed_cam_crack: "Cameo: Skelettfinger klopft & zerbricht Display",
     ed_cam_fogged_glass: "Cameo: Beschlagene Scheibe mit 'BOO!' Wischspur",
     ed_cam_eye: "Cameo: Lauerndes Zombie-Auge in der Ecke",
+    ed_cam_portal: "Cameo: Geister-Portal / Schwarzes Loch (Saugt Geister ein)",
     ed_cameo_min: "Überraschung frühestens nach (Min.)",
     ed_cameo_max: "Überraschung spätestens nach (Min.)",
     ed_kiosk_safe: "Standby-Schutz (Bildschirm aus = Pause & Stumm)",
@@ -167,6 +197,10 @@ const I18N = {
     test_reaper: "Test Reaper",
     test_crows: "Test Crows",
     test_horseman: "Test Horseman",
+    test_mummy: "Test Mummy",
+    test_gargoyle: "Test Gargoyle",
+    test_cwitch: "Test Cauldron Witch",
+    test_portal: "Test Portal",
     test_special: "Test Special",
     test_cameo: "Test Cameo",
     from: "From",
@@ -204,8 +238,10 @@ const I18N = {
     ed_end: "Daily flights until",
     ed_countdown: "Show Halloween countdown (clickable!)",
     ed_default_collapsed: "Start collapsed (compact bar)",
+    ed_curtain_type: "Top slime & spiderweb curtain",
     ed_corner_webs: "Cobwebs in dashboard corners",
-    ed_card_glow: "Toxic green eerie glow on cards",
+    ed_card_glow: "Spooky card glow",
+    ed_glow_mode: "Glow mode: Candle (Warm Orange) vs Toxic (Green)",
     ed_flicker_glow: "Eerie flickering of card glow",
     ed_leaves_fall: "Autumn falling leaves",
     ed_crawling_spiders: "Crawling mini spiders on dashboard",
@@ -219,6 +255,12 @@ const I18N = {
     ed_crows_every: "Crows: every Nth flight (0 = never)",
     ed_enable_horseman: "Enable Headless Horseman",
     ed_horseman_every: "Horseman: every Nth flight (0 = never)",
+    ed_enable_mummy: "Enable Flying Mummy Sarcophagus",
+    ed_mummy_every: "Mummy: every Nth flight (0 = never)",
+    ed_enable_gargoyle: "Enable Diving Gargoyle",
+    ed_gargoyle_every: "Gargoyle: every Nth flight (0 = never)",
+    ed_enable_cauldron_witch: "Enable Flying Cauldron Witch",
+    ed_cauldron_witch_every: "Cauldron Witch: every Nth flight (0 = never)",
     ed_enable_specials: "Enable Special flights",
     ed_special: "Special flight: every Nth flight (0 = never)",
     ed_sp_storm: "Special: Lightning storm & thunder",
@@ -233,6 +275,7 @@ const I18N = {
     ed_cam_crack: "Cameo: Skeleton finger tap & screen crack",
     ed_cam_fogged_glass: "Cameo: Frosted glass with 'BOO!' finger smudge",
     ed_cam_eye: "Cameo: Lurking zombie eye in corner",
+    ed_cam_portal: "Cameo: Ghost Portal / Black Hole (swallows ghosts)",
     ed_cameo_min: "Surprise earliest after (min.)",
     ed_cameo_max: "Surprise latest after (min.)",
     ed_kiosk_safe: "Standby protection (Screen off = pause & mute)",
@@ -327,6 +370,100 @@ const CROW_SVG = `
     <circle cx="47" cy="15" r="1.2" fill="#ff3b3b"/>
     <polygon points="32,34 26,48 37,36" fill="#111116"/>
   </g>
+</svg>`;
+
+
+/* Mumien-Sarkophag SVG */
+const MUMMY_SVG = `
+<svg viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto;overflow:visible">
+  <defs>
+    <linearGradient id="hw-gold-sarc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffd700" />
+      <stop offset="30%" stop-color="#b8860b" />
+      <stop offset="70%" stop-color="#daa520" />
+      <stop offset="100%" stop-color="#5a4208" />
+    </linearGradient>
+    <linearGradient id="hw-linen-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e6dfcc" />
+      <stop offset="50%" stop-color="#fffbee" />
+      <stop offset="100%" stop-color="#c9be9d" />
+    </linearGradient>
+  </defs>
+  <polygon points="25,48 55,20 120,24 148,50 120,76 55,80" fill="url(#hw-gold-sarc)" stroke="#3a2503" stroke-width="2.5" />
+  <line x1="120" y1="24" x2="148" y2="50" stroke="#003366" stroke-width="4" />
+  <line x1="120" y1="76" x2="148" y2="50" stroke="#003366" stroke-width="4" />
+  <polygon points="112,38 135,50 112,62" fill="#002b49" />
+  <ellipse cx="120" cy="46" rx="3.5" ry="2" fill="#00ffcc" style="filter:drop-shadow(0 0 3px #00ffcc);" />
+  <ellipse cx="120" cy="54" rx="3.5" ry="2" fill="#00ffcc" style="filter:drop-shadow(0 0 3px #00ffcc);" />
+  <path d="M35,42 Q75,35 110,40" stroke="url(#hw-linen-grad)" stroke-width="6" stroke-linecap="round" fill="none" />
+  <path d="M30,56 Q70,62 108,58" stroke="url(#hw-linen-grad)" stroke-width="6.5" stroke-linecap="round" fill="none" />
+  <path d="M45,28 Q75,48 95,70" stroke="url(#hw-linen-grad)" stroke-width="4.5" stroke-linecap="round" fill="none" />
+  <path d="M45,72 Q75,52 95,30" stroke="url(#hw-linen-grad)" stroke-width="4.5" stroke-linecap="round" fill="none" />
+  <path d="M25,48 C10,38 -5,60 -25,45" stroke="#f0e6d2" stroke-width="3" fill="none" stroke-dasharray="10 4" />
+  <path d="M30,55 C12,65 0,40 -18,62" stroke="#dfd4bd" stroke-width="2.5" fill="none" stroke-dasharray="8 3" />
+</svg>`;
+
+/* Sturzflug-Gargoyle SVG */
+const GARGOYLE_SVG = `
+<svg viewBox="0 0 160 140" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto;overflow:visible">
+  <defs>
+    <linearGradient id="hw-stone-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#69737d" />
+      <stop offset="50%" stop-color="#485159" />
+      <stop offset="100%" stop-color="#2a3036" />
+    </linearGradient>
+    <radialGradient id="hw-gargoyle-eye" cx="40%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#ff3b30" />
+      <stop offset="100%" stop-color="#7a0000" />
+    </radialGradient>
+  </defs>
+  <g class="hw-wing-left" style="transform-origin: 70px 75px;">
+    <path d="M70,75 C50,30 20,10 5,25 C-5,35 15,65 30,85 C15,80 5,95 20,105 C35,115 65,95 70,75 Z" fill="url(#hw-stone-grad)" stroke="#1a1c1e" stroke-width="2.5" />
+    <polygon points="5,25 0,18 8,22" fill="#111" />
+  </g>
+  <g class="hw-wing-right" style="transform-origin: 90px 75px;">
+    <path d="M90,75 C110,30 140,10 155,25 C165,35 145,65 130,85 C145,80 155,95 140,105 C125,115 95,95 90,75 Z" fill="url(#hw-stone-grad)" stroke="#1a1c1e" stroke-width="2.5" />
+    <polygon points="155,25 160,18 152,22" fill="#111" />
+  </g>
+  <path d="M62,60 C58,85 64,115 80,125 C96,115 102,85 98,60 Z" fill="#3f474d" stroke="#1f2326" stroke-width="2" />
+  <path d="M80,120 Q80,145 105,140 Q100,132 85,125" fill="#2a3036" />
+  <path d="M68,115 L60,130 L66,132 L72,122" fill="#1e2124" />
+  <path d="M92,115 L100,130 L94,132 L88,122" fill="#1e2124" />
+  <polygon points="66,45 52,18 72,36" fill="#22262a" stroke="#111" stroke-width="1.5" />
+  <polygon points="94,45 108,18 88,36" fill="#22262a" stroke="#111" stroke-width="1.5" />
+  <circle cx="80" cy="52" r="19" fill="url(#hw-stone-grad)" stroke="#1a1c1e" stroke-width="2" />
+  <ellipse cx="73" cy="50" rx="3.5" ry="2.5" fill="url(#hw-gargoyle-eye)" style="filter: drop-shadow(0 0 5px #ff1a1a);" />
+  <ellipse cx="87" cy="50" rx="3.5" ry="2.5" fill="url(#hw-gargoyle-eye)" style="filter: drop-shadow(0 0 5px #ff1a1a);" />
+  <path d="M72,60 Q80,68 88,60 Q80,63 72,60 Z" fill="#150202" />
+  <polygon points="74,60 76,64 78,60" fill="#fff" />
+  <polygon points="82,60 84,64 86,60" fill="#fff" />
+</svg>`;
+
+/* Fliegende Kessel-Hexe SVG */
+const CAULDRON_WITCH_SVG = `
+<svg viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto;overflow:visible">
+  <defs>
+    <linearGradient id="hw-cwitch-robe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4a154b" />
+      <stop offset="100%" stop-color="#190724" />
+    </linearGradient>
+    <radialGradient id="hw-poison-brew" cx="45%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#00ff88" />
+      <stop offset="70%" stop-color="#9b51e0" />
+      <stop offset="100%" stop-color="#3c096c" />
+    </radialGradient>
+  </defs>
+  <line x1="15" y1="88" x2="148" y2="52" stroke="#6f4e37" stroke-width="5" stroke-linecap="round" />
+  <polygon points="135,46 160,35 158,62 138,60" fill="#c29b38" stroke="#8c6d1d" stroke-width="1.5" />
+  <ellipse cx="60" cy="72" rx="20" ry="16" fill="#1b1d20" stroke="#0e0f12" stroke-width="2.5" />
+  <ellipse cx="60" cy="62" rx="16" ry="6" fill="url(#hw-poison-brew)" />
+  <polygon points="75,35 60,65 95,65" fill="url(#hw-cwitch-robe)" />
+  <circle cx="85" cy="32" r="10" fill="#8ed179" />
+  <path d="M89,32 L97,35 L89,37" fill="#8ed179" stroke="#68a056" stroke-width="1" />
+  <circle cx="87" cy="30" r="1.8" fill="#103308" />
+  <polygon points="72,26 98,26 84,0" fill="#1e102d" />
+  <ellipse cx="85" cy="26" rx="16" ry="3" fill="#32164a" />
+  <rect x="76" y="21" width="16" height="3" fill="#ff7700" />
 </svg>`;
 
 /* Kopfloser Reiter auf Geisterpferd SVG */
@@ -553,17 +690,40 @@ function ensureGlobalStyle() {
     
     .hw-crawling-spider{position:fixed;z-index:99997;pointer-events:auto;cursor:pointer;touch-action:manipulation;transition:transform 0.15s ease}
     
-    /* Giftgrüner Spuk-Glow */
-    body.hw-card-glow-active ha-card:not(.hw-no-glow) {
+    /* Spuk-Glow: Kerzenschein (Warmes Kürbis-Orange) vs. Toxic (Giftgrün) */
+    body.hw-card-glow-active.hw-glow-toxic ha-card:not(.hw-no-glow) {
       box-shadow: 0 0 14px rgba(60,255,120,0.35), inset 0 0 8px rgba(60,255,120,0.18) !important;
       border: 1px solid rgba(60,255,120,0.45) !important;
       transition: box-shadow 1.2s ease-in-out, border-color 1.2s ease-in-out;
     }
-    body.hw-card-glow-active ha-card:not(.hw-no-glow):hover {
+    body.hw-card-glow-active.hw-glow-toxic ha-card:not(.hw-no-glow):hover {
       box-shadow: 0 0 22px rgba(60,255,120,0.65), inset 0 0 12px rgba(60,255,120,0.3) !important;
     }
 
-    /* Flackern des Glows (Horror Neon Flackern) */
+    @keyframes hw-candle-flicker {
+      0%, 100% {
+        box-shadow: 0 0 14px rgba(255,120,10,0.45), inset 0 0 8px rgba(255,90,0,0.2) !important;
+        border-color: rgba(255,140,20,0.45) !important;
+      }
+      25% {
+        box-shadow: 0 0 10px rgba(255,95,0,0.32), inset 0 0 6px rgba(255,70,0,0.15) !important;
+        border-color: rgba(255,110,10,0.35) !important;
+      }
+      50% {
+        box-shadow: 0 0 19px rgba(255,150,20,0.6), inset 0 0 11px rgba(255,110,0,0.3) !important;
+        border-color: rgba(255,160,30,0.6) !important;
+      }
+      75% {
+        box-shadow: 0 0 12px rgba(255,105,5,0.38), inset 0 0 7px rgba(255,80,0,0.18) !important;
+        border-color: rgba(255,125,15,0.4) !important;
+      }
+    }
+    body.hw-card-glow-active:not(.hw-glow-toxic) ha-card:not(.hw-no-glow) {
+      animation: hw-candle-flicker 3.2s infinite ease-in-out !important;
+      transition: box-shadow 0.4s ease, border-color 0.4s ease;
+    }
+
+    /* Flackern des Glows */
     @keyframes hw-neon-flicker {
       0%, 100% { opacity: 1; }
       18% { opacity: 0.25; }
@@ -576,6 +736,11 @@ function ensureGlobalStyle() {
     body.hw-card-glow-flicker ha-card:not(.hw-no-glow) {
       animation: hw-neon-flicker 0.42s ease-in-out !important;
     }
+
+    /* Neue Kreaturen Styles */
+    .hw-mummy{position:relative;filter:drop-shadow(0 0 12px rgba(255,215,0,.65))}
+    .hw-gargoyle{position:relative;filter:drop-shadow(0 0 14px rgba(255,40,40,.6))}
+    .hw-cwitch{position:relative;filter:drop-shadow(0 0 14px rgba(160,32,240,.7))}
 
     /* Dashboard-Erschütterung / Shake */
     @keyframes hw-card-shake {
@@ -1055,6 +1220,153 @@ function playBell(volume) {
   });
 }
 
+
+/* Web Audio v1.9.0: Bandagen-Wurf Geräusch */
+function playBandageTear(volume) {
+  const ctx = audioReady(volume);
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const bufferSize = ctx.sampleRate * 0.45;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-3 * (i / bufferSize));
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(800, t);
+  filter.frequency.exponentialRampToValueAtTime(3200, t + 0.2);
+  filter.frequency.exponentialRampToValueAtTime(400, t + 0.45);
+  filter.Q.setValueAtTime(4.0, t);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(volume * 0.8, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+  noise.connect(filter).connect(g).connect(ctx.destination);
+  noise.start(t);
+  noise.stop(t + 0.48);
+}
+
+/* Web Audio v1.9.0: Gargoyle Knurren */
+function playGargoyleGrowl(volume) {
+  const ctx = audioReady(volume);
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const osc1 = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const oscGain = ctx.createGain();
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+
+  osc1.type = "sawtooth";
+  osc2.type = "sawtooth";
+  osc1.frequency.setValueAtTime(65, t);
+  osc1.frequency.linearRampToValueAtTime(48, t + 1.2);
+  osc2.frequency.setValueAtTime(68, t);
+  osc2.frequency.linearRampToValueAtTime(45, t + 1.2);
+
+  lfo.type = "sine";
+  lfo.frequency.setValueAtTime(14, t);
+  lfoGain.gain.setValueAtTime(0.4, t);
+  lfo.connect(lfoGain.gain);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(380, t);
+  filter.frequency.linearRampToValueAtTime(180, t + 1.2);
+
+  oscGain.gain.setValueAtTime(0.0001, t);
+  oscGain.gain.linearRampToValueAtTime(volume * 0.85, t + 0.15);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, t + 1.25);
+
+  osc1.connect(filter);
+  osc2.connect(filter);
+  filter.connect(oscGain).connect(ctx.destination);
+
+  osc1.start(t);
+  osc2.start(t);
+  osc1.stop(t + 1.3);
+  osc2.stop(t + 1.3);
+}
+
+/* Web Audio v1.9.0: Gargoyle-Flügelschlag */
+function playGargoyleWing(volume) {
+  const ctx = audioReady(volume);
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(140, t);
+  osc.frequency.exponentialRampToValueAtTime(32, t + 0.35);
+
+  gain.gain.setValueAtTime(volume * 0.7, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.38);
+}
+
+/* Web Audio v1.9.0: Kessel-Giftgluckern */
+function playCauldronBubbles(volume) {
+  const ctx = audioReady(volume);
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  for (let i = 0; i < 4; i++) {
+    const t0 = t + i * 0.12;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    const startF = 300 + Math.random() * 200;
+    osc.frequency.setValueAtTime(startF, t0);
+    osc.frequency.exponentialRampToValueAtTime(startF * 1.8, t0 + 0.08);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(volume * 0.4, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.1);
+  }
+}
+
+/* Web Audio v1.9.0: Schwarzes Loch & Portal-Vortex */
+function playPortalVortex(volume) {
+  const ctx = audioReady(volume);
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const dur = 4.2;
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const out = buf.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0;
+  for (let i = 0; i < buf.length; i++) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99 * b0 + white * 0.05;
+    b1 = 0.95 * b1 + white * 0.11;
+    b2 = 0.85 * b2 + white * 0.25;
+    out[i] = (b0 + b1 + b2) * 0.4;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+
+  const bq = ctx.createBiquadFilter();
+  bq.type = "bandpass";
+  bq.frequency.setValueAtTime(200, t);
+  bq.frequency.exponentialRampToValueAtTime(1400, t + 2.0);
+  bq.frequency.exponentialRampToValueAtTime(120, t + dur);
+  bq.Q.setValueAtTime(7.5, t);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.001, t);
+  gain.gain.linearRampToValueAtTime(volume * 0.8, t + 1.6);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+  src.connect(bq).connect(gain).connect(ctx.destination);
+  src.start(t);
+  src.stop(t + dur + 0.1);
+}
+
 function playHorn(volume) {
   const ctx = audioReady(volume);
   if (!ctx) return;
@@ -1129,8 +1441,10 @@ class HalloweenFlyoverCardEditor extends HTMLElement {
           schedule_end: "ed_end",
           countdown: "ed_countdown",
           default_collapsed: "ed_default_collapsed",
+          curtain_type: "ed_curtain_type",
           corner_webs: "ed_corner_webs",
           card_glow: "ed_card_glow",
+          glow_mode: "ed_glow_mode",
           flicker_glow: "ed_flicker_glow",
           leaves_fall: "ed_leaves_fall",
           crawling_spiders: "ed_crawling_spiders",
@@ -1144,6 +1458,13 @@ class HalloweenFlyoverCardEditor extends HTMLElement {
           crows_every: "ed_crows_every",
           enable_horseman: "ed_enable_horseman",
           horseman_every: "ed_horseman_every",
+          enable_mummy: "ed_enable_mummy",
+          mummy_every: "ed_mummy_every",
+          enable_gargoyle: "ed_enable_gargoyle",
+          gargoyle_every: "ed_gargoyle_every",
+          enable_cauldron_witch: "ed_enable_cauldron_witch",
+          cauldron_witch_every: "ed_cauldron_witch_every",
+          cameo_portal: "ed_cam_portal",
           enable_specials: "ed_enable_specials",
           special_every: "ed_special",
           special_storm: "ed_sp_storm",
@@ -1221,8 +1542,18 @@ class HalloweenFlyoverCard extends HTMLElement {
         type: "expandable",
         title: L.sec_decorations,
         schema: [
+          { name: "curtain_type", selector: { select: { options: [
+            { value: "slime_web", label: "Schleim & Spinnennetz" },
+            { value: "slime", label: "Nur Schleim" },
+            { value: "web", label: "Nur Spinnennetz" },
+            { value: "none", label: "Kein Vorhang" }
+          ] } } },
           { name: "corner_webs", selector: { boolean: {} } },
           { name: "card_glow", selector: { boolean: {} } },
+          { name: "glow_mode", selector: { select: { options: [
+            { value: "candle", label: "🕯️ Kerzenschein (Warm-Orange)" },
+            { value: "toxic", label: "🧪 Toxic Glow (Giftgrün)" }
+          ] } } },
           { name: "flicker_glow", selector: { boolean: {} } },
           { name: "leaves_fall", selector: { boolean: {} } },
           { name: "crawling_spiders", selector: { boolean: {} } },
@@ -1243,6 +1574,12 @@ class HalloweenFlyoverCard extends HTMLElement {
           { name: "crows_every", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
           { name: "enable_horseman", selector: { boolean: {} } },
           { name: "horseman_every", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
+          { name: "enable_mummy", selector: { boolean: {} } },
+          { name: "mummy_every", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
+          { name: "enable_gargoyle", selector: { boolean: {} } },
+          { name: "gargoyle_every", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
+          { name: "enable_cauldron_witch", selector: { boolean: {} } },
+          { name: "cauldron_witch_every", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
         ],
       },
       {
@@ -1266,6 +1603,7 @@ class HalloweenFlyoverCard extends HTMLElement {
           { name: "cameo_crack", selector: { boolean: {} } },
           { name: "cameo_fogged_glass", selector: { boolean: {} } },
           { name: "cameo_eye", selector: { boolean: {} } },
+          { name: "cameo_portal", selector: { boolean: {} } },
           { name: "cameo_spider", selector: { boolean: {} } },
           { name: "cameo_hand", selector: { boolean: {} } },
           { name: "cameo_lantern", selector: { boolean: {} } },
@@ -1354,12 +1692,72 @@ class HalloweenFlyoverCard extends HTMLElement {
     this._cleanupDecorations();
   }
 
+
+  _updateCurtain(type) {
+    if (!this._curtainEl) {
+      const el = document.createElement("div");
+      el.id = "hw-screen-curtain";
+      el.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:75px;pointer-events:none;z-index:99990;overflow:hidden;";
+      document.body.appendChild(el);
+      this._curtainEl = el;
+    }
+    const showSlime = type === "slime_web" || type === "slime";
+    const showWeb = type === "slime_web" || type === "web";
+    this._curtainEl.innerHTML = `
+      <svg viewBox="0 0 1920 80" preserveAspectRatio="none" style="width:100%;height:100%;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.6));">
+        <defs>
+          <linearGradient id="hw-slime-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#24db16" stop-opacity="0.95" />
+            <stop offset="60%" stop-color="#14940b" stop-opacity="0.85" />
+            <stop offset="100%" stop-color="#0e6b06" stop-opacity="0.9" />
+          </linearGradient>
+          <radialGradient id="hw-drip-shine" cx="35%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="#99ff88" stop-opacity="0.8" />
+            <stop offset="100%" stop-color="#14940b" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        ${showWeb ? `
+          <g stroke="rgba(240, 240, 255, 0.42)" stroke-width="1.2" fill="none">
+            <path d="M0,0 L90,65 M0,20 L75,55 M0,45 L50,50 M0,0 L18,70" />
+            <path d="M12,4 Q18,22 4,32 M28,8 Q42,42 12,56 M48,12 Q70,58 20,70" />
+            <path d="M1920,0 L1830,65 M1920,20 L1845,55 M1920,45 L1870,50 M1920,0 L1902,70" />
+            <path d="M1908,4 Q1902,22 1916,32 M1892,8 Q1878,42 1908,56 M1872,12 Q1850,58 1900,70" />
+            <path d="M360,0 L360,42 M360,42 A3,3 0 1,0 360,48 A3,3 0 1,0 360,42" stroke-width="1" />
+            <path d="M1420,0 L1420,55 M1420,55 A3,3 0 1,0 1420,61 A3,3 0 1,0 1420,55" stroke-width="1" />
+          </g>` : ''}
+        ${showSlime ? `
+          <path d="
+            M0,0 L1920,0 L1920,18
+            C1880,18 1865,48 1850,48 C1835,48 1820,15 1780,15
+            C1740,15 1725,62 1705,62 C1685,62 1675,20 1620,20
+            C1570,20 1550,52 1530,52 C1515,52 1500,22 1440,22
+            C1390,22 1375,68 1350,68 C1330,68 1315,18 1260,18
+            C1200,18 1185,45 1165,45 C1150,45 1140,12 1080,12
+            C1020,12 1000,58 975,58 C955,58 940,20 880,20
+            C825,20 810,65 790,65 C770,65 760,15 700,15
+            C640,15 625,50 605,50 C590,50 580,22 520,22
+            C470,22 455,72 430,72 C410,72 395,16 340,16
+            C290,16 275,55 255,55 C240,55 225,24 170,24
+            C120,24 105,64 80,64 C60,64 45,18 0,18 Z
+          " fill="url(#hw-slime-grad)" />
+          <ellipse cx="430" cy="67" rx="5" ry="3.5" fill="url(#hw-drip-shine)" />
+          <ellipse cx="790" cy="60" rx="4" ry="3" fill="url(#hw-drip-shine)" />
+          <ellipse cx="1350" cy="63" rx="5" ry="3.5" fill="url(#hw-drip-shine)" />
+          <ellipse cx="1705" cy="57" rx="4" ry="3" fill="url(#hw-drip-shine)" />` : ''}
+      </svg>
+    `;
+  }
+
   _cleanupDecorations() {
     if (this._cornerWebsEl) {
       this._cornerWebsEl.remove();
       this._cornerWebsEl = null;
     }
-    document.body.classList.remove("hw-card-glow-active", "hw-card-glow-flicker", "hw-shaking");
+    if (this._curtainEl) {
+      this._curtainEl.remove();
+      this._curtainEl = null;
+    }
+    document.body.classList.remove("hw-card-glow-active", "hw-card-glow-flicker", "hw-glow-toxic", "hw-shaking");
     this._clearMiniSpiders();
     clearInterval(this._leafTimer);
     clearInterval(this._flickerTimer);
@@ -1386,12 +1784,26 @@ class HalloweenFlyoverCard extends HTMLElement {
       this._cornerWebsEl = null;
     }
 
-    // Giftgrüner Glow
+    // Deko-Vorhang (Schleim & Spinnennetz)
+    const cType = this._config.curtain_type || "slime_web";
+    if (active && cType !== "none") {
+      this._updateCurtain(cType);
+    } else if (this._curtainEl) {
+      this._curtainEl.remove();
+      this._curtainEl = null;
+    }
+
+    // Spuk-Glow (Kerzenschein vs. Toxic)
     if (active && this._config.card_glow !== false) {
       document.body.classList.add("hw-card-glow-active");
+      if (this._config.glow_mode === "toxic") {
+        document.body.classList.add("hw-glow-toxic");
+      } else {
+        document.body.classList.remove("hw-glow-toxic");
+      }
       this._startFlickerTimer();
     } else {
-      document.body.classList.remove("hw-card-glow-active", "hw-card-glow-flicker");
+      document.body.classList.remove("hw-card-glow-active", "hw-card-glow-flicker", "hw-glow-toxic");
       clearInterval(this._flickerTimer);
     }
 
@@ -1667,6 +2079,10 @@ class HalloweenFlyoverCard extends HTMLElement {
             <button class="action" id="testreaper">💀 ${t("test_reaper")}</button>
             <button class="action" id="testcrows">🦅 ${t("test_crows")}</button>
             <button class="action" id="testhorseman">🏇 ${t("test_horseman")}</button>
+            <button class="action" id="testmummy">🏺 ${t("test_mummy")}</button>
+            <button class="action" id="testgargoyle">🦅 ${t("test_gargoyle")}</button>
+            <button class="action" id="testcwitch">🧙‍♀️ ${t("test_cwitch")}</button>
+            <button class="action" id="testportal">🌀 ${t("test_portal")}</button>
             <button class="action" id="testspecial">⚡ ${t("test_special")}</button>
             <button class="action" id="testcameo">🕷️ ${t("test_cameo")}</button>
           </div>
@@ -1727,6 +2143,22 @@ class HalloweenFlyoverCard extends HTMLElement {
     $("testhorseman").addEventListener("click", () => {
       unlockAudio();
       if (!this._flying) this._flyHorseman();
+    });
+    $("testmummy").addEventListener("click", () => {
+      unlockAudio();
+      if (!this._flying) this._flyMummy();
+    });
+    $("testgargoyle").addEventListener("click", () => {
+      unlockAudio();
+      if (!this._flying) this._flyGargoyle();
+    });
+    $("testcwitch").addEventListener("click", () => {
+      unlockAudio();
+      if (!this._flying) this._flyCauldronWitch();
+    });
+    $("testportal").addEventListener("click", () => {
+      unlockAudio();
+      this._cameoPortal(() => {});
     });
     $("testcameo").addEventListener("click", () => {
       unlockAudio();
@@ -1886,6 +2318,7 @@ class HalloweenFlyoverCard extends HTMLElement {
     if (cfg.cameo_crack !== false) pool.push("crack");
     if (cfg.cameo_fogged_glass !== false) pool.push("fogged_glass");
     if (cfg.cameo_eye !== false) pool.push("eye");
+    if (cfg.cameo_portal !== false) pool.push("portal");
     return pool;
   }
 
@@ -1971,11 +2404,23 @@ class HalloweenFlyoverCard extends HTMLElement {
     const allowReaper = cfg.enable_reaper !== false && reaperEvery > 0;
     const allowCrows = cfg.enable_crows !== false && crowsEvery > 0;
     const allowHorseman = cfg.enable_horseman !== false && horsemanEvery > 0;
+    const mummyEvery = Number(cfg.mummy_every);
+    const allowMummy = cfg.enable_mummy !== false && mummyEvery > 0;
+    const gargoyleEvery = Number(cfg.gargoyle_every);
+    const allowGargoyle = cfg.enable_gargoyle !== false && gargoyleEvery > 0;
+    const cwitchEvery = Number(cfg.cauldron_witch_every);
+    const allowCwitch = cfg.enable_cauldron_witch !== false && cwitchEvery > 0;
     const allowGhosts = cfg.enable_ghosts !== false && ghostEvery > 0;
     const allowWitch = cfg.enable_witch !== false;
 
     if (allowSpecials && specialEvery > 0 && n % specialEvery === 0) {
       this._flySpecial();
+    } else if (allowMummy && n % mummyEvery === 0) {
+      this._flyMummy();
+    } else if (allowGargoyle && n % gargoyleEvery === 0) {
+      this._flyGargoyle();
+    } else if (allowCwitch && n % cwitchEvery === 0) {
+      this._flyCauldronWitch();
     } else if (allowHorseman && n % horsemanEvery === 0) {
       this._flyHorseman();
     } else if (allowReaper && n % reaperEvery === 0) {
@@ -1992,6 +2437,12 @@ class HalloweenFlyoverCard extends HTMLElement {
       this._flyReaper();
     } else if (allowCrows) {
       this._flyCrows();
+    } else if (allowMummy) {
+      this._flyMummy();
+    } else if (allowGargoyle) {
+      this._flyGargoyle();
+    } else if (allowCwitch) {
+      this._flyCauldronWitch();
     } else if (allowGhosts) {
       this._flyGhosts();
     } else if (allowSpecials) {
@@ -2447,6 +2898,282 @@ class HalloweenFlyoverCard extends HTMLElement {
     };
     move.onfinish = finish;
     move.oncancel = finish;
+  }
+
+
+  /* --- 6. MUMIEN-SARKOPHAG MIT BANDAGEN-WURF --- */
+  _flyMummy() {
+    this._flying = true;
+    this._render();
+    ensureGlobalStyle();
+
+    const cfg = this._config;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const dur = clamp(Number(cfg.duration) || 10, 4, 30) * 1000 * 1.1;
+    const size = clamp(W * (clamp(Number(cfg.width_percent) || 60, 20, 100) / 100) * 0.38, 140, 440);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const y0 = rand(H * 0.16, H * 0.44);
+
+    const overlay = this._overlay(0.85, dur);
+    const group = document.createElement("div");
+    group.className = "hw-group";
+    group.style.top = `${y0}px`;
+    group.style.width = `${size}px`;
+
+    const wave = document.createElement("div");
+    wave.className = "hw-wave";
+    const inner = document.createElement("div");
+    inner.className = "hw-inner";
+    inner.style.transform = `scaleX(${dir})`;
+
+    const mummy = document.createElement("div");
+    mummy.className = "hw-mummy hw-tap";
+    mummy.innerHTML = MUMMY_SVG;
+
+    mummy.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      unlockAudio();
+      const r = mummy.getBoundingClientRect();
+      const cx = r.left + r.width * 0.5;
+      const cy = r.top + r.height * 0.5;
+      this._throwBandages(cx, cy);
+      this._bubble("Uuungh! 🏺", cx, cy, "#ffd700");
+      if (this._soundOn()) playBandageTear(this._vol("sound_volume", 0.6));
+    });
+
+    inner.appendChild(mummy);
+    wave.appendChild(inner);
+    group.appendChild(wave);
+    overlay.appendChild(group);
+
+    const startX = dir === 1 ? -size * 1.5 : W + size * 0.5;
+    const endX = dir === 1 ? W + size * 0.5 : -size * 1.5;
+    const move = group.animate(
+      [{ transform: `translateX(${startX}px)` }, { transform: `translateX(${endX}px)` }],
+      { duration: dur, easing: "linear", fill: "forwards" }
+    );
+    wave.animate(
+      [
+        { transform: "translateY(0) rotate(-4deg)" },
+        { transform: "translateY(-14px) rotate(4deg)", offset: 0.5 },
+        { transform: "translateY(0) rotate(-4deg)" },
+      ],
+      { duration: 2400, iterations: Infinity, easing: "ease-in-out" }
+    );
+
+    if (this._soundOn()) {
+      playWind(dur / 1000, this._vol("wind_volume", 0.5) * 0.7);
+      setTimeout(() => this._flying && playGhost(this._vol("sound_volume", 0.6) * 0.7), dur * 0.35);
+    }
+
+    const finish = () => {
+      overlay.remove();
+      this._flying = false;
+      this._render();
+    };
+    move.onfinish = finish;
+    move.oncancel = finish;
+  }
+
+  _throwBandages(cx, cy) {
+    for (let i = 0; i < 7; i++) {
+      const bandage = document.createElement("div");
+      bandage.className = "hw-spark";
+      const angle = (i / 7) * 2 * Math.PI + rand(-0.2, 0.2);
+      const dist = rand(120, 220);
+      const targetX = Math.cos(angle) * dist;
+      const targetY = Math.sin(angle) * dist;
+      const rot = rand(0, 360);
+
+      bandage.style.cssText = `
+        position:fixed;left:${cx}px;top:${cy}px;width:${rand(35, 60)}px;height:12px;
+        background:linear-gradient(90deg, #fffbee, #e6dfcc, #c9be9d);
+        border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,0.5);
+        pointer-events:none;z-index:100001;transform:translate(-50%,-50%) scale(0.6);
+      `;
+      document.body.appendChild(bandage);
+
+      bandage.animate(
+        [
+          { transform: "translate(-50%,-50%) scale(0.6) rotate(0deg)", opacity: 1 },
+          { transform: `translate(calc(-50% + ${targetX}px), calc(-50% + ${targetY}px)) scale(1.1) rotate(${rot}deg)`, opacity: 0 }
+        ],
+        { duration: rand(650, 950), easing: "cubic-bezier(0.12, 0.8, 0.33, 1)", fill: "forwards" }
+      ).onfinish = () => bandage.remove();
+    }
+  }
+
+  /* --- 7. GARGOYLE IM STURZFLUG --- */
+  _flyGargoyle() {
+    this._flying = true;
+    this._render();
+    ensureGlobalStyle();
+
+    const cfg = this._config;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const dur = 4600;
+    const size = clamp(W * 0.22, 130, 260);
+    const startX = rand(W * 0.2, W * 0.7);
+
+    const overlay = this._overlay(0.9, dur + 400);
+    const gargoyle = document.createElement("div");
+    gargoyle.className = "hw-gargoyle hw-tap";
+    gargoyle.style.cssText = `
+      position:fixed;top:-150px;left:${startX}px;width:${size}px;height:${size * 0.88}px;
+      z-index:99999;pointer-events:auto;cursor:pointer;touch-action:manipulation;
+    `;
+    gargoyle.innerHTML = GARGOYLE_SVG;
+    overlay.appendChild(gargoyle);
+
+    const dive = gargoyle.animate(
+      [
+        { top: "-150px", transform: "scale(0.6) rotate(42deg)" },
+        { top: `${H * 0.46}px`, transform: "scale(1.25) rotate(10deg)", offset: 0.4 },
+        { top: `${H * 0.48}px`, transform: "scale(1.2) rotate(-10deg)", offset: 0.52 },
+        { top: "-220px", left: `${startX + (Math.random() < 0.5 ? 200 : -200)}px`, transform: "scale(0.5) rotate(-35deg)", offset: 1.0 }
+      ],
+      { duration: dur, easing: "cubic-bezier(0.35, 0, 0.25, 1)", fill: "forwards" }
+    );
+
+    gargoyle.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      unlockAudio();
+      const r = gargoyle.getBoundingClientRect();
+      this._bubble("GROAAR!", r.left + r.width / 2, r.top, "#ff3b30");
+      this._shakeDashboard(400);
+      if (this._soundOn()) playGargoyleGrowl(this._vol("sound_volume", 0.6));
+    });
+
+    if (this._soundOn()) {
+      const vol = this._vol("sound_volume", 0.6);
+      playGargoyleGrowl(vol);
+      setTimeout(() => this._flying && playGargoyleWing(vol * 0.9), 600);
+      setTimeout(() => this._flying && playGargoyleWing(vol * 0.9), 1200);
+      setTimeout(() => this._flying && playGargoyleWing(vol * 0.9), 1800);
+    }
+
+    dive.onfinish = () => {
+      overlay.remove();
+      this._flying = false;
+      this._render();
+    };
+  }
+
+  /* --- 8. FLIEGENDE KESSEL-HEXE MIT GIFTRAUCH --- */
+  _flyCauldronWitch() {
+    this._flying = true;
+    this._render();
+    ensureGlobalStyle();
+
+    const cfg = this._config;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const dur = clamp(Number(cfg.duration) || 10, 4, 30) * 1000 * 1.15;
+    const size = clamp(W * (clamp(Number(cfg.width_percent) || 60, 20, 100) / 100) * 0.38, 140, 440);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const y0 = rand(H * 0.18, H * 0.45);
+
+    const overlay = this._overlay(0.85, dur);
+    const group = document.createElement("div");
+    group.className = "hw-group";
+    group.style.top = `${y0}px`;
+    group.style.width = `${size}px`;
+
+    const wave = document.createElement("div");
+    wave.className = "hw-wave";
+    const inner = document.createElement("div");
+    inner.className = "hw-inner";
+    inner.style.transform = `scaleX(${dir})`;
+
+    const cwitch = document.createElement("div");
+    cwitch.className = "hw-cwitch hw-tap";
+    cwitch.innerHTML = CAULDRON_WITCH_SVG;
+
+    cwitch.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      unlockAudio();
+      const r = cwitch.getBoundingClientRect();
+      const cx = r.left + r.width * 0.5;
+      const cy = r.top + r.height * 0.5;
+      this._bubble("Gluck-Gluck! 🧙‍♀️", cx, cy, "#00ff88");
+      for (let k = 0; k < 4; k++) this._emitPoisonPuff(cx, cy, true);
+      if (this._soundOn()) {
+        playCauldronBubbles(this._vol("sound_volume", 0.6));
+        playCackle(this._vol("sound_volume", 0.6) * 0.8);
+      }
+    });
+
+    inner.appendChild(cwitch);
+    wave.appendChild(inner);
+    group.appendChild(wave);
+    overlay.appendChild(group);
+
+    const startX = dir === 1 ? -size * 1.5 : W + size * 0.5;
+    const endX = dir === 1 ? W + size * 0.5 : -size * 1.5;
+    const move = group.animate(
+      [{ transform: `translateX(${startX}px)` }, { transform: `translateX(${endX}px)` }],
+      { duration: dur, easing: "linear", fill: "forwards" }
+    );
+    wave.animate(
+      [
+        { transform: "translateY(0) rotate(2deg)" },
+        { transform: "translateY(-16px) rotate(-3deg)", offset: 0.5 },
+        { transform: "translateY(0) rotate(2deg)" },
+      ],
+      { duration: 2100, iterations: Infinity, easing: "ease-in-out" }
+    );
+
+    // Kontinuierlicher lila Giftrauch
+    const smokeTimer = setInterval(() => {
+      const r = cwitch.getBoundingClientRect();
+      if (!r.width) return;
+      const cx = dir === 1 ? r.left + r.width * 0.38 : r.right - r.width * 0.38;
+      const cy = r.top + r.height * 0.62;
+      this._emitPoisonPuff(cx, cy, false);
+    }, 140);
+
+    if (this._soundOn()) {
+      playWind(dur / 1000, this._vol("wind_volume", 0.5) * 0.7);
+      setTimeout(() => this._flying && playCauldronBubbles(this._vol("sound_volume", 0.6)), dur * 0.15);
+      setTimeout(() => this._flying && playCackle(this._vol("sound_volume", 0.6)), dur * 0.45);
+    }
+
+    const finish = () => {
+      clearInterval(smokeTimer);
+      overlay.remove();
+      this._flying = false;
+      this._render();
+    };
+    move.onfinish = finish;
+    move.oncancel = finish;
+  }
+
+  _emitPoisonPuff(cx, cy, burst = false) {
+    const puff = document.createElement("div");
+    puff.className = "hw-spark";
+    const size = burst ? rand(24, 46) : rand(14, 28);
+    const dx = rand(-20, 20);
+    const dy = -rand(25, 50);
+
+    puff.style.cssText = `
+      position:fixed;left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;
+      border-radius:50%;background:radial-gradient(circle, rgba(179,71,255,0.85) 0%, rgba(106,13,173,0.55) 55%, rgba(45,0,77,0) 80%);
+      pointer-events:none;z-index:99996;transform:translate(-50%,-50%) scale(0.3);filter:blur(2px);
+    `;
+    document.body.appendChild(puff);
+
+    puff.animate(
+      [
+        { transform: "translate(-50%,-50%) scale(0.3)", opacity: 0.9 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(2.2)`, opacity: 0 }
+      ],
+      { duration: rand(1100, 1600), easing: "cubic-bezier(0.1, 0.6, 0.3, 1)", fill: "forwards" }
+    ).onfinish = () => puff.remove();
   }
 
   /* --- 5. GEISTERFLUG --- */
@@ -3081,6 +3808,7 @@ class HalloweenFlyoverCard extends HTMLElement {
     else if (k === "crack") this._cameoCrack(done);
     else if (k === "fogged_glass") this._cameoFoggedGlass(done);
     else if (k === "eye") this._cameoEye(done);
+    else if (k === "portal") this._cameoPortal(done);
     else done();
   }
 
@@ -3306,6 +4034,94 @@ class HalloweenFlyoverCard extends HTMLElement {
     this._fog(duration, true);
     if (this._soundOn()) playWind(duration / 1000, this._vol("wind_volume", 0.5) * 0.4);
     setTimeout(done, duration);
+  }
+
+
+  /* Cameo: Geister-Portal / Schwarzes Loch */
+  _cameoPortal(done) {
+    const sound = this._soundOn();
+    const vol = this._vol("sound_volume", 0.6);
+    if (sound) playPortalVortex(vol);
+
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const posX = rand(W * 0.25, W * 0.75);
+    const posY = rand(H * 0.25, H * 0.65);
+    const portalSize = clamp(W * 0.22, 160, 260);
+
+    const portal = document.createElement("div");
+    portal.style.cssText = `
+      position:fixed;left:${posX}px;top:${posY}px;width:${portalSize}px;height:${portalSize}px;
+      transform:translate(-50%,-50%) scale(0);pointer-events:none;z-index:99999;
+      display:flex;align-items:center;justify-content:center;
+    `;
+
+    portal.innerHTML = `
+      <svg viewBox="0 0 200 200" style="width:100%;height:100%;overflow:visible;animation:hw-bob 3s linear infinite;">
+        <defs>
+          <radialGradient id="hw-vortex-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#020108" stop-opacity="1" />
+            <stop offset="40%" stop-color="#2a0845" stop-opacity="0.9" />
+            <stop offset="75%" stop-color="#6414e9" stop-opacity="0.6" />
+            <stop offset="95%" stop-color="#00ffcc" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <circle cx="100" cy="100" r="95" fill="url(#hw-vortex-glow)" />
+        <g stroke="#9b51e0" stroke-width="2.5" fill="none" opacity="0.8">
+          <path d="M100,100 Q120,40 170,50 Q140,110 100,100" />
+          <path d="M100,100 Q80,160 30,150 Q60,90 100,100" />
+          <path d="M100,100 Q160,80 150,30 Q90,60 100,100" />
+          <path d="M100,100 Q40,120 50,170 Q110,140 100,100" />
+        </g>
+        <circle cx="100" cy="100" r="34" fill="#000000" stroke="#00f2fe" stroke-width="2" />
+        <circle cx="100" cy="100" r="28" fill="#030008" />
+      </svg>
+    `;
+    document.body.appendChild(portal);
+
+    // Portal Öffnen & Schließen
+    const pAnim = portal.animate(
+      [
+        { transform: "translate(-50%,-50%) scale(0) rotate(0deg)", opacity: 0 },
+        { transform: "translate(-50%,-50%) scale(1.1) rotate(220deg)", opacity: 1, offset: 0.15 },
+        { transform: "translate(-50%,-50%) scale(1.0) rotate(360deg)", opacity: 1, offset: 0.25 },
+        { transform: "translate(-50%,-50%) scale(1.0) rotate(1400deg)", opacity: 1, offset: 0.8 },
+        { transform: "translate(-50%,-50%) scale(0) rotate(1800deg)", opacity: 0, offset: 1.0 }
+      ],
+      { duration: 6800, fill: "forwards", easing: "cubic-bezier(0.16, 1, 0.3, 1)" }
+    );
+
+    // 2 kleine Geister werden spiralförmig in das Schwarze Loch eingesaugt
+    for (let gIdx = 0; gIdx < 2; gIdx++) {
+      setTimeout(() => {
+        const ghost = document.createElement("div");
+        const gSize = rand(36, 48);
+        const startOffX = (gIdx === 0 ? 1 : -1) * rand(120, 180);
+        const startOffY = rand(-120, 120);
+
+        ghost.style.cssText = `
+          position:fixed;left:${posX + startOffX}px;top:${posY + startOffY}px;
+          width:${gSize}px;height:${gSize}px;z-index:100000;pointer-events:none;
+        `;
+        ghost.innerHTML = GHOST_SVG;
+        document.body.appendChild(ghost);
+
+        ghost.animate(
+          [
+            { transform: "scale(1) rotate(0deg)", left: `${posX + startOffX}px`, top: `${posY + startOffY}px`, opacity: 0.9 },
+            { transform: `scale(0.55) rotate(${gIdx === 0 ? -180 : 180}deg)`, left: `${posX + startOffX * 0.4}px`, top: `${posY + startOffY * 0.4}px`, opacity: 0.85, offset: 0.45 },
+            { transform: `scale(0.04) rotate(${gIdx === 0 ? -420 : 420}deg)`, left: `${posX}px`, top: `${posY}px`, opacity: 0 }
+          ],
+          { duration: 2800, easing: "cubic-bezier(0.55, 0, 1, 0.45)", fill: "forwards" }
+        ).onfinish = () => ghost.remove();
+      }, 1000 + gIdx * 1100);
+    }
+
+    pAnim.onfinish = () => {
+      portal.remove();
+      done();
+    };
   }
 
   _cameoLantern(done) {
