@@ -1,19 +1,19 @@
 /*
  * Halloween Flyover Card for Home Assistant
  * ------------------------------------------
- * Version 1.7.0:
- * - NEU: Eigener Home Assistant Card-Editor (HalloweenFlyoverCardEditor)
- *   -> Behebt den Schalter- & Schieberegler-Bug endgültig! Alle Schalter & Schieberegler
- *      zeigen sofort ihren echten Standardwert (EIN / 60% / 10s etc.), selbst wenn die Card-YAML leer ist.
- * - NEU: Aufgeräumter Editor mit aufklappbaren Kategorien (Allgemein, Deko, Flieger, Spezial, Cameos, Kiosk)
- * - NEU: Süßigkeiten-Regen beim Klick auf den Countdown (🍬 🍭 🍫 🍪 🧁 mit magischem Glöckchen-Sound)
- * - NEU: Neuer Flieger "Krähen-Schwarm" (Schwarze Raben im Tiefflug mit Flügelschlag & Krah-Sound)
- * - NEU: Erschütterungs- / Rüttel-Effekt (Dashboard wackelt bei Donner, Geisterschiff & Display-Riss)
- * - Sensenmann (Grim Reaper), Skelettfinger mit Glasriss, kriechende Mini-Spinnen, giftgrüner Glow
- * - Kiosk-Standby-Schutz (Fully Kiosk & Page Visibility)
+ * Version 1.8.0:
+ * - NEU: Fliegender "Kopfloser Reiter" (Headless Horseman) auf Geisterpferd mit brennendem Kürbiskopf & Wiehern
+ * - NEU: Herbstlicher Laubfall (🍂, 🍁 taumeln sanft über den Dashboard-Hintergrund)
+ * - NEU: Unheimliches Lampen-Flackern (Giftgrüner Glow flackert wie alte Neonröhre)
+ * - NEU: Cameo "Beschlagene Scheibe" (Milchiger Kondens-Dunst, Finger wischt 'BOO! 👻' ein)
+ * - NEU: Cameo "Lauerndes Zombie-Auge" (Auge lugt aus der Ecke, sieht sich um und taucht ab)
+ * - Schalter- & Schieberegler-Bug im Editor dauerhaft behoben durch dedizierten Custom Editor
+ * - Kompakte Einzeiler-Leiste mit runden Icon-Buttons (🦇, 🔊, ⚙️) & ausklappbaren Details
+ * - Süßigkeiten-Regen bei Klick auf Countdown (🍬 🍭 🍫)
+ * - Sensenmann, Krähen-Schwarm, Mini-Spinnen, Rüttel-Effekt, Kiosk-Standby-Schutz
  */
 
-const CARD_VERSION = "1.7.1";
+const CARD_VERSION = "1.8.0";
 const STORAGE_KEY = "halloween-flyover-card-v1";
 
 const DEFAULT_CONFIG = {
@@ -28,9 +28,11 @@ const DEFAULT_CONFIG = {
   default_collapsed: false,
   kiosk_safe: true,
   shake_fx: true,
-  // Dashboard-Deko
+  // Dashboard-Deko & Atmosphäre
   corner_webs: true,
   card_glow: true,
+  flicker_glow: true,
+  leaves_fall: true,
   crawling_spiders: true,
   // Haupt-Flieger
   enable_witch: true,
@@ -40,6 +42,8 @@ const DEFAULT_CONFIG = {
   reaper_every: 5,
   enable_crows: true,
   crows_every: 7,
+  enable_horseman: true,
+  horseman_every: 6,
   // Spezialflüge
   enable_specials: true,
   special_every: 10,
@@ -54,6 +58,8 @@ const DEFAULT_CONFIG = {
   cameo_fog: true,
   cameo_drip: true,
   cameo_crack: true,
+  cameo_fogged_glass: true,
+  cameo_eye: true,
   cameo_min: 4,
   cameo_max: 12,
 };
@@ -77,6 +83,7 @@ const I18N = {
     test_ghost: "Test Geister",
     test_reaper: "Test Sensenmann",
     test_crows: "Test Krähen",
+    test_horseman: "Test Reiter",
     test_special: "Test Spezial",
     test_cameo: "Test Cameo",
     from: "Von",
@@ -101,8 +108,8 @@ const I18N = {
     collapse: "Einklappen",
     // Editor Abschnitte
     sec_general: "⚙️ Allgemeine Einstellungen & Sound",
-    sec_decorations: "🕸️ Dashboard-Dekoration & Rüttel-Effekt",
-    sec_flyers: "🦇 Flieger (Hexe, Geister, Sensenmann, Krähen)",
+    sec_decorations: "🕸️ Dashboard-Deko, Laub & Rüttel-Effekt",
+    sec_flyers: "🦇 Flieger (Hexe, Geister, Sensenmann, Krähen, Reiter)",
     sec_specials: "⚡ Spezial-Events (Gewitter, Schwarm, Schiff)",
     sec_cameos: "🕷️ Überraschungen (Cameos)",
     sec_kiosk: "📱 Tablet & Kiosk-Modus",
@@ -118,6 +125,8 @@ const I18N = {
     ed_default_collapsed: "Karte standardmäßig eingeklappt starten",
     ed_corner_webs: "Spinnennetze in den Dashboard-Ecken",
     ed_card_glow: "Giftgrüner Spuk-Glow für Dashboard-Karten",
+    ed_flicker_glow: "Unheimliches Lampen-Flackern des Glows",
+    ed_leaves_fall: "Herbstlicher Laubfall (wehende Blätter)",
     ed_crawling_spiders: "Kriechende Mini-Spinnen auf dem Dashboard",
     ed_shake_fx: "Erschütterungs-Effekt (Karten wackeln bei Donner & Bruch)",
     ed_enable_witch: "Hexe auf dem Besen fliegen lassen",
@@ -127,6 +136,8 @@ const I18N = {
     ed_reaper_every: "Sensenmann: jeder N-te Flug (0 = nie)",
     ed_enable_crows: "Krähen-Schwarm im Tiefflug erlauben",
     ed_crows_every: "Krähen: jeder N-te Flug (0 = nie)",
+    ed_enable_horseman: "Kopfloser Reiter auf Geisterpferd erlauben",
+    ed_horseman_every: "Kopfloser Reiter: jeder N-te Flug (0 = nie)",
     ed_enable_specials: "Spezialflüge erlauben",
     ed_special: "Spezialflug: jeder N-te Flug (0 = nie)",
     ed_sp_storm: "Spezial: Gewitter mit Blitzen & Donner",
@@ -139,6 +150,8 @@ const I18N = {
     ed_cam_fog: "Cameo: Bodennebel mit leuchtenden Augen",
     ed_cam_drip: "Cameo: Herabtropfendes Blut",
     ed_cam_crack: "Cameo: Skelettfinger klopft & zerbricht Display",
+    ed_cam_fogged_glass: "Cameo: Beschlagene Scheibe mit 'BOO!' Wischspur",
+    ed_cam_eye: "Cameo: Lauerndes Zombie-Auge in der Ecke",
     ed_cameo_min: "Überraschung frühestens nach (Min.)",
     ed_cameo_max: "Überraschung spätestens nach (Min.)",
     ed_kiosk_safe: "Standby-Schutz (Bildschirm aus = Pause & Stumm)",
@@ -153,6 +166,7 @@ const I18N = {
     test_ghost: "Test Ghosts",
     test_reaper: "Test Reaper",
     test_crows: "Test Crows",
+    test_horseman: "Test Horseman",
     test_special: "Test Special",
     test_cameo: "Test Cameo",
     from: "From",
@@ -176,8 +190,8 @@ const I18N = {
     expand: "Show details",
     collapse: "Collapse",
     sec_general: "⚙️ General Settings & Audio",
-    sec_decorations: "🕸️ Dashboard Decorations & Shake FX",
-    sec_flyers: "🦇 Flyers (Witch, Ghosts, Reaper, Crows)",
+    sec_decorations: "🕸️ Dashboard Deko, Leaves & Shake FX",
+    sec_flyers: "🦇 Flyers (Witch, Ghosts, Reaper, Crows, Horseman)",
     sec_specials: "⚡ Special Events (Storm, Bat Swarm, Ship)",
     sec_cameos: "🕷️ Surprises (Cameos)",
     sec_kiosk: "📱 Tablet & Kiosk Mode",
@@ -192,6 +206,8 @@ const I18N = {
     ed_default_collapsed: "Start collapsed (compact bar)",
     ed_corner_webs: "Cobwebs in dashboard corners",
     ed_card_glow: "Toxic green eerie glow on cards",
+    ed_flicker_glow: "Eerie flickering of card glow",
+    ed_leaves_fall: "Autumn falling leaves",
     ed_crawling_spiders: "Crawling mini spiders on dashboard",
     ed_shake_fx: "Screen shake effect (cards vibrate on thunder/crack)",
     ed_enable_witch: "Enable Witch flights",
@@ -201,6 +217,8 @@ const I18N = {
     ed_reaper_every: "Reaper: every Nth flight (0 = never)",
     ed_enable_crows: "Enable flying Crow swarm",
     ed_crows_every: "Crows: every Nth flight (0 = never)",
+    ed_enable_horseman: "Enable Headless Horseman",
+    ed_horseman_every: "Horseman: every Nth flight (0 = never)",
     ed_enable_specials: "Enable Special flights",
     ed_special: "Special flight: every Nth flight (0 = never)",
     ed_sp_storm: "Special: Lightning storm & thunder",
@@ -213,6 +231,8 @@ const I18N = {
     ed_cam_fog: "Cameo: Ground fog with eyes",
     ed_cam_drip: "Cameo: Dripping blood",
     ed_cam_crack: "Cameo: Skeleton finger tap & screen crack",
+    ed_cam_fogged_glass: "Cameo: Frosted glass with 'BOO!' finger smudge",
+    ed_cam_eye: "Cameo: Lurking zombie eye in corner",
     ed_cameo_min: "Surprise earliest after (min.)",
     ed_cameo_max: "Surprise latest after (min.)",
     ed_kiosk_safe: "Standby protection (Screen off = pause & mute)",
@@ -292,7 +312,6 @@ const REAPER_SVG = `
   <circle cx="80" cy="34" r="2" fill="#7fffd4" style="filter:drop-shadow(0 0 5px #00ffaa)"/>
 </svg>`;
 
-/* Krähe / Rabe SVG */
 const CROW_SVG = `
 <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto;overflow:visible">
   <g class="hw-wing hw-wing-left" style="transform-origin: 38px 22px;">
@@ -301,17 +320,68 @@ const CROW_SVG = `
   <g class="hw-wing hw-wing-right" style="transform-origin: 42px 22px;">
     <path d="M42 22 C50 8 64 2 78 8 C74 14 68 18 64 26 C56 24 50 24 42 22 Z" fill="#111116" stroke="#2d2d38" stroke-width="1"/>
   </g>
-  <!-- Körper & Kopf -->
   <g fill="#1a1a24">
     <ellipse cx="40" cy="25" rx="7" ry="12" transform="rotate(-15 40 25)"/>
     <circle cx="46" cy="16" r="5.5"/>
-    <!-- Schnabel -->
     <polygon points="51,14 62,18 50,20" fill="#2c2c36"/>
-    <!-- Auge -->
     <circle cx="47" cy="15" r="1.2" fill="#ff3b3b"/>
-    <!-- Schwanzfedern -->
     <polygon points="32,34 26,48 37,36" fill="#111116"/>
   </g>
+</svg>`;
+
+/* Kopfloser Reiter auf Geisterpferd SVG */
+const HORSEMAN_SVG = `
+<svg viewBox="0 0 220 160" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto;overflow:visible">
+  <g>
+    <!-- Geisterpferd: Schweif -->
+    <path d="M40 85 C20 75 10 100 2 115 C15 105 30 100 45 95 Z" fill="#1b0f2e" stroke="#9b6bff" stroke-width="1.5"/>
+    <!-- Hinterbeine -->
+    <path d="M50 95 L30 135 L38 140 L58 105 Z" fill="#241438"/>
+    <path d="M65 95 L50 145 L58 148 L76 100 Z" fill="#180c26"/>
+    <!-- Rumpf -->
+    <ellipse cx="90" cy="88" rx="42" ry="22" fill="#1e1030" stroke="#9b6bff" stroke-width="1.8"/>
+    <!-- Vorderbeine gestreckt -->
+    <path d="M115 95 L145 130 L152 126 L125 88 Z" fill="#241438"/>
+    <path d="M125 90 L160 118 L166 112 L132 82 Z" fill="#180c26"/>
+    <!-- Hals & Kopf -->
+    <path d="M115 82 C125 60 140 40 155 35 L170 42 C162 55 150 70 135 88 Z" fill="#1e1030" stroke="#9b6bff" stroke-width="1.8"/>
+    <path d="M165 36 L185 45 L180 54 L160 48 Z" fill="#241438"/>
+    <!-- Mähne mit Flammen-Glow -->
+    <path d="M125 70 Q118 52 135 48 Q130 36 148 34 Q142 22 160 25" stroke="#ff7518" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="174" cy="42" r="2.2" fill="#ff3b3b" style="filter:drop-shadow(0 0 4px #ff0000)"/>
+    <!-- Hufen Feuerfunken -->
+    <circle cx="34" cy="138" r="3.2" fill="#ff7518" style="filter:drop-shadow(0 0 4px #ff7518)"/>
+    <circle cx="54" cy="146" r="3.2" fill="#ff7518" style="filter:drop-shadow(0 0 4px #ff7518)"/>
+    <circle cx="148" cy="128" r="3.2" fill="#ff7518" style="filter:drop-shadow(0 0 4px #ff7518)"/>
+    <circle cx="163" cy="115" r="3.2" fill="#ff7518" style="filter:drop-shadow(0 0 4px #ff7518)"/>
+
+    <!-- Reiter (Kopflos) -->
+    <path d="M78 75 C70 50 82 32 95 32 C108 32 115 50 110 75 Z" fill="#12081c" stroke="#ff7518" stroke-width="1.4"/>
+    <path d="M88 32 Q95 36 102 32 Q95 28 88 32 Z" fill="#8a1818" stroke="#3b0000" stroke-width="1"/>
+    <!-- Arm mit ausgestrecktem Kürbiskopf -->
+    <path d="M102 46 L130 32 L138 38 L106 55 Z" fill="#200e30"/>
+    <circle cx="134" cy="34" r="3.5" fill="#12081c"/>
+    <g class="hw-rider-pumpkin" transform="translate(136, 10)" style="filter:drop-shadow(0 0 8px #ff7518)">
+      <ellipse cx="15" cy="17" rx="14" ry="13" fill="#ff7518" stroke="#3b1a0a" stroke-width="1.2"/>
+      <rect x="13" y="2" width="4" height="5" fill="#5a7a2a"/>
+      <polygon points="9,13 13,13 11,9" fill="#ffe27a"/>
+      <polygon points="17,13 21,13 19,9" fill="#ffe27a"/>
+      <path d="M9 20 L12 23 L15 20 L18 23 L21 20 L19 24 Q15 26 11 24 Z" fill="#ffe27a"/>
+    </g>
+  </g>
+</svg>`;
+
+/* Zombie-Auge SVG */
+const ZOMBIE_EYE_SVG = `
+<svg viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;overflow:visible">
+  <!-- Augapfel mit Adern -->
+  <circle cx="35" cy="35" r="28" fill="#f0ebd8" stroke="#8a2020" stroke-width="1.8"/>
+  <path d="M12 30 Q20 34 26 35 M48 28 Q42 32 38 35 M22 48 Q28 44 32 40 M46 46 Q40 42 36 38" stroke="#c42020" stroke-width="1.2" fill="none"/>
+  <!-- Iris -->
+  <circle cx="35" cy="35" r="14" fill="#a4b824" stroke="#485c0c" stroke-width="1.5"/>
+  <!-- Pupille -->
+  <circle cx="35" cy="35" r="7" fill="#0d0d12"/>
+  <circle cx="32" cy="32" r="2.5" fill="#ffffff"/>
 </svg>`;
 
 const SKELETON_FINGER_SVG = `
@@ -466,6 +536,7 @@ function ensureGlobalStyle() {
     .hw-wave,.hw-inner{position:relative;will-change:transform}
     .hw-witch{position:relative;filter:drop-shadow(0 0 10px rgba(155,107,255,.55))}
     .hw-reaper{position:relative;filter:drop-shadow(0 0 16px rgba(0,255,170,.65))}
+    .hw-horseman{position:relative;filter:drop-shadow(0 0 14px rgba(255,117,24,.65))}
     .hw-crow{position:relative;filter:drop-shadow(0 0 8px rgba(0,0,0,.9))}
     .hw-bat{position:absolute;will-change:transform}
     .hw-wing-left{animation:hw-flap-l .2s ease-in-out infinite alternate}
@@ -490,6 +561,20 @@ function ensureGlobalStyle() {
     }
     body.hw-card-glow-active ha-card:not(.hw-no-glow):hover {
       box-shadow: 0 0 22px rgba(60,255,120,0.65), inset 0 0 12px rgba(60,255,120,0.3) !important;
+    }
+
+    /* Flackern des Glows (Horror Neon Flackern) */
+    @keyframes hw-neon-flicker {
+      0%, 100% { opacity: 1; }
+      18% { opacity: 0.25; }
+      22% { opacity: 1; }
+      28% { opacity: 0.15; }
+      32% { opacity: 0.85; }
+      40% { opacity: 0.3; }
+      44% { opacity: 1; }
+    }
+    body.hw-card-glow-flicker ha-card:not(.hw-no-glow) {
+      animation: hw-neon-flicker 0.42s ease-in-out !important;
     }
 
     /* Dashboard-Erschütterung / Shake */
@@ -606,7 +691,7 @@ function playCackle(volume) {
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.linearRampToValueAtTime(volume * 0.3, t0 + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.11);
+    g.exponentialRampToValueAtTime(0.0001, t0 + 0.11);
     osc.connect(g).connect(formant);
     osc.start(t0);
     osc.stop(t0 + 0.13);
@@ -781,7 +866,6 @@ function playReaperToll(volume) {
   });
 }
 
-/* Krähen-Krächzen ("Krah! Krah!") */
 function playCrowCaw(volume) {
   const ctx = audioReady(volume);
   if (!ctx) return;
@@ -793,24 +877,20 @@ function playCrowCaw(volume) {
     osc.type = "sawtooth";
     osc.frequency.setValueAtTime(520, t0);
     osc.frequency.exponentialRampToValueAtTime(320, t0 + dur);
-
     const bp = ctx.createBiquadFilter();
     bp.type = "bandpass";
     bp.frequency.value = 950;
     bp.Q.value = 3.5;
-
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.linearRampToValueAtTime(volume * 0.45, t0 + 0.03);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
     osc.connect(bp).connect(g).connect(ctx.destination);
     osc.start(t0);
     osc.stop(t0 + dur + 0.02);
   }
 }
 
-/* Süßigkeiten-Klingeln (Harfen-Glockenspiel) */
 function playChime(volume) {
   const ctx = audioReady(volume);
   if (!ctx) return;
@@ -829,6 +909,80 @@ function playChime(volume) {
     osc.start(t0);
     osc.stop(t0 + 0.75);
   });
+}
+
+/* Hufschlag-Galopp für das Geisterpferd */
+function playHoofbeats(volume, beats = 8) {
+  const ctx = audioReady(volume);
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  for (let i = 0; i < beats; i++) {
+    const t0 = t + i * 0.24;
+    [0, 0.08].forEach((off) => {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(120, t0 + off);
+      osc.frequency.exponentialRampToValueAtTime(45, t0 + off + 0.05);
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 350;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(volume * 0.45, t0 + off);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + off + 0.06);
+      osc.connect(lp).connect(g).connect(ctx.destination);
+      osc.start(t0 + off);
+      osc.stop(t0 + off + 0.07);
+    });
+  }
+}
+
+/* Schauriges Geisterpferd-Wiehern */
+function playHorseNeigh(volume) {
+  const ctx = audioReady(volume);
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(550, t);
+  osc.frequency.linearRampToValueAtTime(1150, t + 0.3);
+  osc.frequency.linearRampToValueAtTime(650, t + 0.8);
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 14;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 65;
+  lfo.connect(lfoGain).connect(osc.frequency);
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 1400;
+  bp.Q.value = 2.5;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(volume * 0.45, t + 0.15);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+  osc.connect(bp).connect(g).connect(ctx.destination);
+  osc.start(t);
+  lfo.start(t);
+  osc.stop(t + 0.9);
+  lfo.stop(t + 0.9);
+}
+
+/* Glas-Wischquietschen für beschlagene Scheibe */
+function playSqueak(volume) {
+  const ctx = audioReady(volume);
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1900, t);
+  osc.frequency.linearRampToValueAtTime(2600, t + 0.09);
+  osc.frequency.linearRampToValueAtTime(1600, t + 0.22);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(volume * 0.3, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.26);
 }
 
 function playThunder(volume) {
@@ -941,12 +1095,10 @@ const fmt = (ts) => {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
-/* ---------- DEDIZIERTER CARD-EDITOR (Behebt den HA Schalter-Bug) ---------- */
+/* ---------- DEDIZIERTER CARD-EDITOR (Behebt Schalter/Schieberegler Bug) ---------- */
 
 class HalloweenFlyoverCardEditor extends HTMLElement {
   setConfig(config) {
-    // Verschmilzt vorhandene Config mit den echten Standardwerten!
-    // Dadurch stehen alle Schalter sofort auf true und die Sliders auf den echten Zahlen.
     this._config = { ...DEFAULT_CONFIG, ...config };
     this._build();
   }
@@ -979,6 +1131,8 @@ class HalloweenFlyoverCardEditor extends HTMLElement {
           default_collapsed: "ed_default_collapsed",
           corner_webs: "ed_corner_webs",
           card_glow: "ed_card_glow",
+          flicker_glow: "ed_flicker_glow",
+          leaves_fall: "ed_leaves_fall",
           crawling_spiders: "ed_crawling_spiders",
           shake_fx: "ed_shake_fx",
           enable_witch: "ed_enable_witch",
@@ -988,6 +1142,8 @@ class HalloweenFlyoverCardEditor extends HTMLElement {
           reaper_every: "ed_reaper_every",
           enable_crows: "ed_enable_crows",
           crows_every: "ed_crows_every",
+          enable_horseman: "ed_enable_horseman",
+          horseman_every: "ed_horseman_every",
           enable_specials: "ed_enable_specials",
           special_every: "ed_special",
           special_storm: "ed_sp_storm",
@@ -1000,6 +1156,8 @@ class HalloweenFlyoverCardEditor extends HTMLElement {
           cameo_fog: "ed_cam_fog",
           cameo_drip: "ed_cam_drip",
           cameo_crack: "ed_cam_crack",
+          cameo_fogged_glass: "ed_cam_fogged_glass",
+          cameo_eye: "ed_cam_eye",
           cameo_min: "ed_cameo_min",
           cameo_max: "ed_cameo_max",
           kiosk_safe: "ed_kiosk_safe",
@@ -1065,6 +1223,8 @@ class HalloweenFlyoverCard extends HTMLElement {
         schema: [
           { name: "corner_webs", selector: { boolean: {} } },
           { name: "card_glow", selector: { boolean: {} } },
+          { name: "flicker_glow", selector: { boolean: {} } },
+          { name: "leaves_fall", selector: { boolean: {} } },
           { name: "crawling_spiders", selector: { boolean: {} } },
           { name: "shake_fx", selector: { boolean: {} } },
         ],
@@ -1081,6 +1241,8 @@ class HalloweenFlyoverCard extends HTMLElement {
           { name: "reaper_every", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
           { name: "enable_crows", selector: { boolean: {} } },
           { name: "crows_every", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
+          { name: "enable_horseman", selector: { boolean: {} } },
+          { name: "horseman_every", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
         ],
       },
       {
@@ -1102,6 +1264,8 @@ class HalloweenFlyoverCard extends HTMLElement {
         schema: [
           { name: "cameos", selector: { boolean: {} } },
           { name: "cameo_crack", selector: { boolean: {} } },
+          { name: "cameo_fogged_glass", selector: { boolean: {} } },
+          { name: "cameo_eye", selector: { boolean: {} } },
           { name: "cameo_spider", selector: { boolean: {} } },
           { name: "cameo_hand", selector: { boolean: {} } },
           { name: "cameo_lantern", selector: { boolean: {} } },
@@ -1131,6 +1295,8 @@ class HalloweenFlyoverCard extends HTMLElement {
     this._lang = "en";
     this._cornerWebsEl = null;
     this._miniSpiders = [];
+    this._leafTimer = null;
+    this._flickerTimer = null;
     this._collapsed = false;
   }
 
@@ -1193,14 +1359,17 @@ class HalloweenFlyoverCard extends HTMLElement {
       this._cornerWebsEl.remove();
       this._cornerWebsEl = null;
     }
-    document.body.classList.remove("hw-card-glow-active");
+    document.body.classList.remove("hw-card-glow-active", "hw-card-glow-flicker", "hw-shaking");
     this._clearMiniSpiders();
+    clearInterval(this._leafTimer);
+    clearInterval(this._flickerTimer);
   }
 
   _syncDecorations() {
     const active = !!(this._st?.enabled);
     ensureGlobalStyle();
 
+    // Spinnennetze
     if (active && this._config.corner_webs !== false) {
       if (!this._cornerWebsEl) {
         const wrap = document.createElement("div");
@@ -1217,17 +1386,73 @@ class HalloweenFlyoverCard extends HTMLElement {
       this._cornerWebsEl = null;
     }
 
+    // Giftgrüner Glow
     if (active && this._config.card_glow !== false) {
       document.body.classList.add("hw-card-glow-active");
+      this._startFlickerTimer();
     } else {
-      document.body.classList.remove("hw-card-glow-active");
+      document.body.classList.remove("hw-card-glow-active", "hw-card-glow-flicker");
+      clearInterval(this._flickerTimer);
     }
 
+    // Herbstlicher Laubfall
+    if (active && this._config.leaves_fall !== false) {
+      this._startLeafTimer();
+    } else {
+      clearInterval(this._leafTimer);
+    }
+
+    // Kriechende Mini-Spinnen
     if (active && this._config.crawling_spiders !== false) {
       this._spawnMiniSpiders();
     } else {
       this._clearMiniSpiders();
     }
+  }
+
+  /* --- Flackernder Glow-Effekt (Alte Neonröhre) --- */
+  _startFlickerTimer() {
+    clearInterval(this._flickerTimer);
+    if (this._config.flicker_glow === false) return;
+    this._flickerTimer = setInterval(() => {
+      if (!this._st?.enabled || this._config.flicker_glow === false || isKioskStandbyActive()) return;
+      document.body.classList.add("hw-card-glow-flicker");
+      setTimeout(() => {
+        document.body.classList.remove("hw-card-glow-flicker");
+      }, 430);
+    }, rand(45000, 90000));
+  }
+
+  /* --- Herbstlicher Laubfall --- */
+  _startLeafTimer() {
+    clearInterval(this._leafTimer);
+    this._leafTimer = setInterval(() => {
+      if (!this._st?.enabled || this._config.leaves_fall === false || isKioskStandbyActive()) return;
+      this._dropLeaf();
+    }, rand(7000, 16000));
+  }
+
+  _dropLeaf() {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const leaves = ["🍂", "🍁"];
+    const el = document.createElement("div");
+    el.className = "hw-emoji";
+    el.textContent = leaves[randInt(0, leaves.length - 1)];
+    const startX = rand(W * 0.1, W * 0.9);
+    const size = rand(18, 30);
+    el.style.cssText = `left:${startX}px;top:-40px;font-size:${size}px;opacity:0.85;pointer-events:none;z-index:99996`;
+    document.body.appendChild(el);
+
+    const driftX = rand(60, 160) * (Math.random() < 0.5 ? -1 : 1);
+    el.animate(
+      [
+        { transform: "translate(0, 0) rotate(0deg)" },
+        { transform: `translate(${driftX * 0.5}px, ${H * 0.5}px) rotate(${rand(-180, 180)}deg)`, offset: 0.5 },
+        { transform: `translate(${driftX}px, ${H + 60}px) rotate(${rand(-360, 360)}deg)` },
+      ],
+      { duration: rand(5500, 9000), easing: "ease-in-out", fill: "forwards" }
+    ).onfinish = () => el.remove();
   }
 
   _spawnMiniSpiders() {
@@ -1291,7 +1516,6 @@ class HalloweenFlyoverCard extends HTMLElement {
     this._miniSpiders = [];
   }
 
-  /* --- Erschütterung des Dashboards (Rüttel-Effekt) --- */
   _shakeDashboard(duration = 550) {
     if (this._config.shake_fx === false) return;
     document.body.classList.add("hw-shaking");
@@ -1300,7 +1524,6 @@ class HalloweenFlyoverCard extends HTMLElement {
     }, duration);
   }
 
-  /* --- Süßigkeiten-Regen beim Klick auf den Countdown --- */
   _candyRain() {
     ensureGlobalStyle();
     unlockAudio();
@@ -1398,7 +1621,6 @@ class HalloweenFlyoverCard extends HTMLElement {
           transform:rotate(90deg);background:rgba(255,117,24,.35);border-color:#ff9d3c;
         }
         
-        /* Details (Aufklappbar) */
         .details{display:none;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,117,24,.2)}
         .details.open{display:block}
         .status-row{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;opacity:.9;margin-bottom:8px}
@@ -1444,6 +1666,7 @@ class HalloweenFlyoverCard extends HTMLElement {
             <button class="action" id="testghost">👻 ${t("test_ghost")}</button>
             <button class="action" id="testreaper">💀 ${t("test_reaper")}</button>
             <button class="action" id="testcrows">🦅 ${t("test_crows")}</button>
+            <button class="action" id="testhorseman">🏇 ${t("test_horseman")}</button>
             <button class="action" id="testspecial">⚡ ${t("test_special")}</button>
             <button class="action" id="testcameo">🕷️ ${t("test_cameo")}</button>
           </div>
@@ -1460,7 +1683,6 @@ class HalloweenFlyoverCard extends HTMLElement {
     const $ = (id) => this.shadowRoot.getElementById(id);
     $("title").textContent = cfg.title || t("title");
 
-    // Süßigkeiten-Regen bei Klick auf den Countdown oder das Icon
     $("cd").addEventListener("click", () => this._candyRain());
     $("witchicon").addEventListener("click", () => this._candyRain());
 
@@ -1501,6 +1723,10 @@ class HalloweenFlyoverCard extends HTMLElement {
     $("testcrows").addEventListener("click", () => {
       unlockAudio();
       if (!this._flying) this._flyCrows();
+    });
+    $("testhorseman").addEventListener("click", () => {
+      unlockAudio();
+      if (!this._flying) this._flyHorseman();
     });
     $("testcameo").addEventListener("click", () => {
       unlockAudio();
@@ -1658,6 +1884,8 @@ class HalloweenFlyoverCard extends HTMLElement {
     if (cfg.cameo_fog !== false) pool.push("fog");
     if (cfg.cameo_drip !== false) pool.push("drip");
     if (cfg.cameo_crack !== false) pool.push("crack");
+    if (cfg.cameo_fogged_glass !== false) pool.push("fogged_glass");
+    if (cfg.cameo_eye !== false) pool.push("eye");
     return pool;
   }
 
@@ -1734,6 +1962,7 @@ class HalloweenFlyoverCard extends HTMLElement {
     const specialEvery = Number(cfg.special_every);
     const reaperEvery = Number(cfg.reaper_every);
     const crowsEvery = Number(cfg.crows_every);
+    const horsemanEvery = Number(cfg.horseman_every);
     const n = (this._st.flightCount || 0) + 1;
     this._st.flightCount = n;
     this._save();
@@ -1741,11 +1970,14 @@ class HalloweenFlyoverCard extends HTMLElement {
     const allowSpecials = cfg.enable_specials !== false && this._getActiveSpecialPool().length > 0;
     const allowReaper = cfg.enable_reaper !== false && reaperEvery > 0;
     const allowCrows = cfg.enable_crows !== false && crowsEvery > 0;
+    const allowHorseman = cfg.enable_horseman !== false && horsemanEvery > 0;
     const allowGhosts = cfg.enable_ghosts !== false && ghostEvery > 0;
     const allowWitch = cfg.enable_witch !== false;
 
     if (allowSpecials && specialEvery > 0 && n % specialEvery === 0) {
       this._flySpecial();
+    } else if (allowHorseman && n % horsemanEvery === 0) {
+      this._flyHorseman();
     } else if (allowReaper && n % reaperEvery === 0) {
       this._flyReaper();
     } else if (allowCrows && n % crowsEvery === 0) {
@@ -1754,6 +1986,8 @@ class HalloweenFlyoverCard extends HTMLElement {
       this._flyGhosts();
     } else if (allowWitch) {
       this._flyWitch();
+    } else if (allowHorseman) {
+      this._flyHorseman();
     } else if (allowReaper) {
       this._flyReaper();
     } else if (allowCrows) {
@@ -2033,7 +2267,7 @@ class HalloweenFlyoverCard extends HTMLElement {
     move.oncancel = finish;
   }
 
-  /* --- 3. KRÄHEN-SCHWARM (Tiefflug mit Krächzen) --- */
+  /* --- 3. KRÄHEN-SCHWARM --- */
   _flyCrows() {
     this._flying = true;
     this._render();
@@ -2102,7 +2336,120 @@ class HalloweenFlyoverCard extends HTMLElement {
     }
   }
 
-  /* --- 4. GEISTERFLUG --- */
+  /* --- 4. KOPFLOSER REITER (Headless Horseman) --- */
+  _flyHorseman() {
+    this._flying = true;
+    this._render();
+    ensureGlobalStyle();
+
+    const cfg = this._config;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const dur = clamp(Number(cfg.duration) || 10, 4, 30) * 1000 * 0.9;
+    const size = clamp(W * (clamp(Number(cfg.width_percent) || 60, 20, 100) / 100) * 0.44, 160, 500);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const y0 = rand(H * 0.2, H * 0.48);
+
+    const overlay = this._overlay(0.9, dur);
+    this._shakeDashboard(500);
+
+    const group = document.createElement("div");
+    group.className = "hw-group";
+    group.style.top = `${y0}px`;
+    group.style.width = `${size}px`;
+
+    const wave = document.createElement("div");
+    wave.className = "hw-wave";
+    const inner = document.createElement("div");
+    inner.className = "hw-inner";
+    inner.style.transform = `scaleX(${dir})`;
+
+    const horseman = document.createElement("div");
+    horseman.className = "hw-horseman hw-tap";
+    horseman.innerHTML = HORSEMAN_SVG;
+
+    // Kürbiskopf-Wurf beim Antippen
+    horseman.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (Date.now() < (this._horsemanCooldown || 0)) return;
+      this._horsemanCooldown = Date.now() + 2500;
+      unlockAudio();
+      const r = horseman.getBoundingClientRect();
+      const cx = r.left + r.width * 0.65;
+      const cy = r.top + r.height * 0.2;
+      this._poof(cx, cy, r.width * 0.35, "#ff7518");
+      this._bubble("Hahaha! 🎃", cx, cy, "#ff9d3c");
+      this._shakeDashboard(350);
+      if (this._soundOn()) {
+        playHorseNeigh(this._vol("sound_volume", 0.6));
+      }
+    });
+
+    inner.appendChild(horseman);
+    wave.appendChild(inner);
+    group.appendChild(wave);
+    overlay.appendChild(group);
+
+    const startX = dir === 1 ? -size * 1.5 : W + size * 0.5;
+    const endX = dir === 1 ? W + size * 0.5 : -size * 1.5;
+    const move = group.animate(
+      [{ transform: `translateX(${startX}px)` }, { transform: `translateX(${endX}px)` }],
+      { duration: dur, easing: "linear", fill: "forwards" }
+    );
+    // Galoppierendes Auf- und Abfedern
+    wave.animate(
+      [
+        { transform: "translateY(0) rotate(0deg)" },
+        { transform: "translateY(-18px) rotate(-3deg)", offset: 0.25 },
+        { transform: "translateY(8px) rotate(2deg)", offset: 0.6 },
+        { transform: "translateY(0) rotate(0deg)" },
+      ],
+      { duration: 520, iterations: Infinity, easing: "ease-in-out" }
+    );
+
+    // Feurige Hufspuren
+    const fireTimer = setInterval(() => {
+      const r = horseman.getBoundingClientRect();
+      if (!r.width) return;
+      const x = dir === 1 ? r.left + r.width * 0.2 : r.right - r.width * 0.2;
+      const y = r.bottom - rand(8, 24);
+      const px = rand(8, 16);
+      const el = document.createElement("div");
+      el.className = "hw-spark";
+      el.style.width = el.style.height = `${px}px`;
+      el.style.background = "#ff7518";
+      el.style.boxShadow = `0 0 ${px * 2}px #ff3b3b`;
+      el.style.left = `${x + rand(-6, 6)}px`;
+      el.style.top = `${y}px`;
+      document.body.appendChild(el);
+      el.animate(
+        [
+          { transform: "translate(0,0) scale(1)", opacity: 0.9 },
+          { transform: `translate(${-dir * rand(15, 45)}px,${rand(10, 30)}px) scale(0.2)`, opacity: 0 },
+        ],
+        { duration: 800, easing: "ease-out", fill: "forwards" }
+      ).onfinish = () => el.remove();
+    }, 85);
+
+    if (this._soundOn()) {
+      const vol = this._vol("sound_volume", 0.6);
+      playWind(dur / 1000, this._vol("wind_volume", 0.5) * 0.8);
+      playHoofbeats(vol * 0.8, Math.floor(dur / 240));
+      setTimeout(() => this._flying && playHorseNeigh(vol), dur * 0.35);
+    }
+
+    const finish = () => {
+      clearInterval(fireTimer);
+      overlay.remove();
+      this._flying = false;
+      this._render();
+    };
+    move.onfinish = finish;
+    move.oncancel = finish;
+  }
+
+  /* --- 5. GEISTERFLUG --- */
   _flyGhosts() {
     this._flying = true;
     this._render();
@@ -2732,7 +3079,108 @@ class HalloweenFlyoverCard extends HTMLElement {
     else if (k === "fog") this._cameoFog(done);
     else if (k === "drip") this._cameoDrip(done);
     else if (k === "crack") this._cameoCrack(done);
+    else if (k === "fogged_glass") this._cameoFoggedGlass(done);
+    else if (k === "eye") this._cameoEye(done);
     else done();
+  }
+
+  /* Beschlagene Scheibe mit 'BOO! 👻' Wischspur */
+  _cameoFoggedGlass(done) {
+    const sound = this._soundOn();
+    const vol = this._vol("sound_volume", 0.6);
+
+    const frostOverlay = document.createElement("div");
+    frostOverlay.style.cssText =
+      "position:fixed;inset:0;z-index:99998;pointer-events:none;opacity:0;" +
+      "background:radial-gradient(ellipse at center, rgba(230,240,255,0.45) 0%, rgba(180,200,240,0.65) 100%);" +
+      "backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity 0.8s ease";
+    document.body.appendChild(frostOverlay);
+
+    // Scheibe beschlägt
+    setTimeout(() => {
+      frostOverlay.style.opacity = "1";
+    }, 50);
+
+    // Unsichtbarer Finger wischt "BOO! 👻" ein
+    setTimeout(() => {
+      if (sound) playSqueak(vol * 0.7);
+      const wipeText = document.createElement("div");
+      wipeText.style.cssText =
+        "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99999;pointer-events:none;" +
+        "font:900 clamp(48px, 12vw, 92px) system-ui, sans-serif;letter-spacing:0.08em;" +
+        "color:rgba(255,255,255,0.95);text-shadow:0 0 12px rgba(120,200,255,0.9), 0 0 24px rgba(255,255,255,0.8);" +
+        "opacity:0;transition:opacity 0.4s ease";
+      wipeText.textContent = "BOO! 👻";
+      document.body.appendChild(wipeText);
+
+      setTimeout(() => {
+        wipeText.style.opacity = "1";
+      }, 50);
+
+      // Verdampft wieder
+      setTimeout(() => {
+        frostOverlay.style.opacity = "0";
+        wipeText.style.opacity = "0";
+        setTimeout(() => {
+          frostOverlay.remove();
+          wipeText.remove();
+          done();
+        }, 900);
+      }, 2600);
+    }, 900);
+  }
+
+  /* Lauerndes Zombie-Auge in der Ecke */
+  _cameoEye(done) {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const size = clamp(W * 0.12, 60, 95);
+    const sound = this._soundOn();
+    const vol = this._vol("sound_volume", 0.6);
+
+    const side = Math.random() < 0.5 ? "left" : "right";
+    const eyeWrap = document.createElement("div");
+    eyeWrap.style.cssText =
+      `position:fixed;bottom:0;${side}:24px;width:${size}px;height:${size}px;z-index:99999;` +
+      "pointer-events:auto;cursor:pointer;touch-action:manipulation;filter:drop-shadow(0 0 8px rgba(180,0,0,0.7))";
+    eyeWrap.innerHTML = ZOMBIE_EYE_SVG;
+    document.body.appendChild(eyeWrap);
+
+    let clicked = false;
+    eyeWrap.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (clicked) return;
+      clicked = true;
+      unlockAudio();
+      const r = eyeWrap.getBoundingClientRect();
+      this._poof(r.left + r.width / 2, r.top + r.height / 2, size * 0.8, "#c42020");
+      this._bubble("Zwick!", r.left + r.width / 2, r.top, "#ff3b3b");
+      if (sound) playPoof(vol);
+      eyeWrap.remove();
+      done();
+    });
+
+    // Schiebt sich hoch, blickt sich um und schlüpft zurück
+    const anim = eyeWrap.animate(
+      [
+        { transform: "translateY(100%) rotate(0deg)" },
+        { transform: "translateY(15%) rotate(-8deg)", offset: 0.15, easing: "ease-out" },
+        { transform: "translateY(15%) rotate(8deg)", offset: 0.5, easing: "ease-in-out" },
+        { transform: "translateY(15%) rotate(-4deg)", offset: 0.8, easing: "ease-in-out" },
+        { transform: "translateY(100%) rotate(0deg)", easing: "ease-in" },
+      ],
+      { duration: 3800, fill: "forwards" }
+    );
+
+    if (sound) playSqueak(vol * 0.4);
+
+    anim.onfinish = () => {
+      if (!clicked) {
+        eyeWrap.remove();
+        done();
+      }
+    };
   }
 
   /* Skelettfinger klopft & zerbricht Bildschirm */
@@ -3055,7 +3503,7 @@ if (!window.customCards.some((c) => c.type === "halloween-flyover-card")) {
   window.customCards.push({
     type: "halloween-flyover-card",
     name: "Halloween Flyover Card",
-    description: "Hexe, Sensenmann, Krähen, Geister, Fledermäuse, Spinnennetze und Sound für dein Dashboard.",
+    description: "Hexe, Sensenmann, Krähen, Kopfloser Reiter, Geister, Laubfall und Sound für dein Dashboard.",
     preview: false,
   });
 }
